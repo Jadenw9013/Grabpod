@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  locations Location[]
+  machines  Machine[]
+  products  Product[]
+  contracts Contract[]
+  orders          OrderHeader[]
+  syncRuns        SyncRun[]
+  restockSessions RestockSession[]
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  address   String?
+  cluster   String?
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  machines  Machine[]
+  contracts Contract[]
+}
+
+model Machine {
+  id              String   @id @default(uuid())
+  tenantId        String
+  vendorMachineId String?
+  stickerNum      String?  @unique
+  locationId      String?
+  status          String   @default("active")
+  lastSeen        DateTime?
+  createdAt       DateTime @default(now())
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  location  Location?  @relation(fields: [locationId], references: [id])
+  orders    OrderHeader[]
+  inventory InventorySnapshot[]
+}
+
+model Contract {
+  id        String   @id @default(uuid())
+  tenantId  String
+  locationId String
+
+  inceptionDate DateTime?
+  rentalDate    DateTime?
+
+  profitShareUnder1000 Float?
+  profitShareOver1000  Float?
+  taxRate              Float  @default(0)
+  creditCardFeeRate    Float  @default(0)
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  location Location @relation(fields: [locationId], references: [id])
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  tenantId        String
+  apexSku         String?
+  vendorProductNo String?
+  name            String
+  category        String?
+  cost            Float?
+  createdAt       DateTime @default(now())
+
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
+  lines          OrderLine[]
+  inventory      InventorySnapshot[]
+  events         InventoryEvent[]
+  warehouseStock WarehouseStock[]
+
+  @@unique([tenantId, apexSku])
+}
+
+model OrderHeader {
+  orderNo             String   @id
+  tenantId            String
+  machineId           String
+  grossAmount         Float    @default(0)
+  actualPaymentAmount Float    @default(0)
+  createdAt           DateTime
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  machine Machine @relation(fields: [machineId], references: [id])
+  lines   OrderLine[]
+}
+
+model OrderLine {
+  id        String  @id @default(uuid())
+  orderNo   String
+  productId String
+  quantity  Float
+  unitPrice Float
+
+  order   OrderHeader @relation(fields: [orderNo], references: [orderNo])
+  product Product     @relation(fields: [productId], references: [id])
+
+  @@unique([orderNo, productId])
+}
+
+model InventorySnapshot {
+  id            String   @id @default(uuid())
+  tenantId      String
+  machineId     String
+  productId     String
+  capacity      Int      @default(0)
+  onHand        Int      @default(0)
+  isLow         Boolean  @default(false)
+  daysOfCover   Float?
+  avgDailySales Float?
+  updatedAt     DateTime @default(now())
+
+  machine Machine @relation(fields: [machineId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([machineId, productId])
+}
+
+model InventoryEvent {
+  id        String   @id @default(uuid())
+  tenantId  String
+  machineId String
+  productId String
+  change    Int
+  reason    String
+  sessionId String?
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model WarehouseStock {
+  id        String   @id @default(cuid())
+  tenantId  String
+  productId String
+  onHand    Int
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([tenantId, productId])
+}
+
+model RestockSession {
+  id          String    @id @default(uuid())
+  tenantId    String
+  assignedDate DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  tenant Tenant              @relation(fields: [tenantId], references: [id])
+  lines  RestockSessionLine[]
+
+  // Idempotency: one open session per tenant per assigned date.
+  // Null assignedDate allows multiple ad-hoc sessions (PostgreSQL unique allows multiple nulls).
+  @@unique([tenantId, assignedDate])
+}
+
+model RestockSessionLine {
+  id                String @id @default(uuid())
+  sessionId         String
+  machineId         String
+  productId         String
+  neededUnits       Int
+  beforeStockRemain Int?
+  afterStockRemain  Int?
+
+  session RestockSession @relation(fields: [sessionId], references: [id])
+
+  @@unique([sessionId, machineId, productId])
+}
+
+model SyncRun {
+  id              String    @id @default(uuid())
+  tenantId        String
+  vendor          String    // "haha"
+  startedAt       DateTime  @default(now())
+  finishedAt      DateTime?
+  status          String    // "running" | "success" | "error"
+  message         String?
+  importedOrders  Int       @default(0)
+  importedLines   Int       @default(0)
+  createdProducts Int       @default(0)
+  createdMachines Int       @default(0)
+  skippedRows     Int       @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
