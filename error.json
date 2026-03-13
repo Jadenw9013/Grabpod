@@ -1,0 +1,15 @@
+{
+  "code": "P1011",
+  "meta": {
+    "modelName": "SyncRun",
+    "driverAdapterError": {
+      "name": "DriverAdapterError",
+      "cause": {
+        "kind": "TlsConnectionError",
+        "reason": "self-signed certificate in certificate chain"
+      }
+    }
+  },
+  "clientVersion": "7.4.2",
+  "name": "PrismaClientKnownRequestError"
+}

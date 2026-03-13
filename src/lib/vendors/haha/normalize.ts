@@ -33,13 +33,34 @@ export function parseNumber(
 /**
  * Convert a Haha order detail (with product_list) into our NormalizedOrder format.
  * Uses parseNumber for safe money/quantity conversion.
+ *
+ * Status mapping:
+ *   101 = paid (counts toward revenue)
+ *   200 = pending (in-progress, amount may be $0)
+ *   other / missing = unknown (0)
  */
 export function normalizeHahaOrder(detail: HahaOrderDetail): NormalizedOrder {
   const orderNo = detail.order_no;
 
+  // Extract status safely — Haha may return it as number or string
+  const rawStatus = detail.status;
+  const status = typeof rawStatus === "number"
+    ? rawStatus
+    : typeof rawStatus === "string"
+      ? parseInt(rawStatus, 10) || 0
+      : 0;
+
+  // HAHA API returns un-zoned timestamps in Beijing Time (UTC+8).
+  // E.g., "2026-03-07 07:53:43". We must append "+08:00" before passing to Date()
+  // to prevent Node from interpreting it as UTC or local server time.
+  const createTime = new Date(detail.create_time.replace(" ", "T") + "+08:00");
+  const payTime = detail.pay_time
+    ? new Date(detail.pay_time.replace(" ", "T") + "+08:00")
+    : null;
+
   return {
     orderNo,
-    createdAt: new Date(detail.create_time),
+    createdAt: !isNaN(createTime.getTime()) ? createTime : new Date(),
     machineIdentifier: detail.sticker_num,
     grossAmount: parseNumber(
       detail.receivable,
@@ -49,6 +70,8 @@ export function normalizeHahaOrder(detail: HahaOrderDetail): NormalizedOrder {
       detail.actual_payment_amount,
       `order ${orderNo} actual_payment_amount`,
     ),
+    status,
+    payTime: payTime && !isNaN(payTime.getTime()) ? payTime : null,
     lineItems: (detail.product_list ?? []).map((p) => ({
       sku: p.product_no || undefined,
       name: p.product_name,

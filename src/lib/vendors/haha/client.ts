@@ -14,13 +14,20 @@ interface HahaConfig {
   appSecret: string;
 }
 
-/** Raw order from GET /open/order list */
+/** Raw order from GET /open/order list (per Open Platform spec) */
 export interface HahaOrderSummary {
   order_no: string;
   sticker_num: string;
+  device_name?: string;
+  status?: number | string;
   create_time: string;
+  pay_time?: string;
   receivable: number | string;
   actual_payment_amount: number | string;
+  total_amount?: number | string;
+  is_refund?: number | string;
+  refund_price?: number | string;
+  source?: string;
   [key: string]: unknown;
 }
 
@@ -41,6 +48,7 @@ export interface HahaOrderDetail {
   sticker_num: string;
   create_time: string;
   pay_time?: string;
+  status?: number | string;
   receivable: number | string;
   actual_payment_amount: number | string;
   product_list: HahaProductItem[];
@@ -63,18 +71,28 @@ function getConfig(): HahaConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Token
+// Token (cached — spec says valid for 15 days)
 // ---------------------------------------------------------------------------
+
+let cachedToken: { value: string; expiresAt: number } | null = null;
+
+// Cache for 12 days (safety margin on 15-day spec validity)
+const TOKEN_CACHE_MS = 12 * 24 * 60 * 60 * 1000;
 
 /**
  * POST /open/auth/gettoken
  * Body: { appkey, appsecret }
  * Success: code === 1000, data.access_token
  *
- * Note: Haha API returns "message" (not "msg") in its responses.
- * We accept both for resilience.
+ * Token is cached in memory for 12 days (spec allows 15).
+ * Accepts both "msg" and "message" from Haha responses.
  */
 export async function getToken(): Promise<string> {
+  // Return cached token if still valid
+  if (cachedToken && Date.now() < cachedToken.expiresAt) {
+    return cachedToken.value;
+  }
+
   const { host, appKey, appSecret } = getConfig();
 
   const res = await fetch(`${host}/open/auth/gettoken`, {
@@ -101,6 +119,15 @@ export async function getToken(): Promise<string> {
       ? body.message
       : body.msg ?? JSON.stringify(body.message) ?? "no message";
 
+  // Handle specific auth error codes per spec
+  if (body.code === 1401 || body.code === 1402 || body.code === 1403) {
+    cachedToken = null; // Invalidate cache on auth errors
+    throw new Error(
+      `Haha auth error (${body.code}): ${errorMsg}. ` +
+      "Check appkey/appsecret configuration.",
+    );
+  }
+
   if (body.code !== 1000 || !body.data?.access_token) {
     throw new Error(
       `Haha gettoken error: code=${body.code} message=${errorMsg} ` +
@@ -108,6 +135,13 @@ export async function getToken(): Promise<string> {
     );
   }
 
+  // Cache the token
+  cachedToken = {
+    value: body.data.access_token,
+    expiresAt: Date.now() + TOKEN_CACHE_MS,
+  };
+
+  console.log("[haha] Token acquired and cached (12-day window)");
   return body.data.access_token;
 }
 
@@ -148,6 +182,7 @@ async function signedGet<T>(
       signature,
       Authorization: token,
     },
+    signal: AbortSignal.timeout(30_000),
     cache: "no-store",
   });
 
@@ -168,6 +203,20 @@ async function signedGet<T>(
       typeof body.message === "string"
         ? body.message
         : body.msg ?? JSON.stringify(body);
+
+    // Handle specific error codes per spec
+    if (body.code === 1401 || body.code === 1402 || body.code === 1403) {
+      cachedToken = null; // Invalidate token on auth errors
+      throw new Error(
+        `Haha auth error (${body.code}): ${errorMsg}. Token may be expired.`,
+      );
+    }
+    if (body.code === -429) {
+      throw new Error(
+        `Haha rate limited (${body.code}): ${errorMsg}. Retry later.`,
+      );
+    }
+
     throw new Error(
       `Haha API ${path} error: code=${body.code} msg=${errorMsg}`,
     );

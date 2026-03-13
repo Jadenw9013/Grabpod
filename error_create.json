@@ -1,0 +1,19 @@
+{
+  "code": "P2003",
+  "meta": {
+    "modelName": "SyncRun",
+    "driverAdapterError": {
+      "name": "DriverAdapterError",
+      "cause": {
+        "originalCode": "23503",
+        "originalMessage": "insert or update on table \"SyncRun\" violates foreign key constraint \"SyncRun_tenantId_fkey\"",
+        "kind": "ForeignKeyConstraintViolation",
+        "constraint": {
+          "index": "SyncRun_tenantId_fkey"
+        }
+      }
+    }
+  },
+  "clientVersion": "7.4.2",
+  "name": "PrismaClientKnownRequestError"
+}

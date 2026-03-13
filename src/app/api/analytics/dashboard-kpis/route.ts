@@ -5,6 +5,31 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+const LA_TZ = "America/Los_Angeles";
+
+/** Midnight on a LA-local date expressed as a UTC instant. */
+function laToUtc(year: number, month: number, day: number): Date {
+    const probe = new Date(Date.UTC(year, month, day, 12));
+    const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: LA_TZ,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+        timeZoneName: "longOffset",
+    }).formatToParts(probe);
+    const offsetPart = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT-08:00";
+    const match = offsetPart.match(/GMT([+-])(\d{2}):(\d{2})/);
+    const offsetSign = match?.[1] === "+" ? 1 : -1;
+    const offsetHours = parseInt(match?.[2] ?? "8", 10);
+    const offsetMinutes = parseInt(match?.[3] ?? "0", 10);
+    const offsetMs = offsetSign * (offsetHours * 60 + offsetMinutes) * 60_000;
+    return new Date(Date.UTC(year, month, day) - offsetMs);
+}
+
 /**
  * GET /api/analytics/dashboard-kpis?window=today|thisMonth|previousMonth
  *
@@ -13,6 +38,9 @@ export const dynamic = "force-dynamic";
  *   - netRevenue   (gross * (1 - ccFeeRate) * (1 - profitShareRate))
  *   - orderCount
  *
+ * Window boundaries are LA-local (America/Los_Angeles) to match the
+ * dashboard page stat cards which also use LA-local boundaries.
+ *
  * Net revenue formula (temporary, see TODOs):
  *   net = gross * (1 - creditCardFeeRate) * (1 - profitShareRate)
  *   - profitShareRate = profitShareUnder1000 if gross < 1000, else profitShareOver1000
@@ -20,7 +48,6 @@ export const dynamic = "force-dynamic";
  *
  * TODO: confirm with owner whether sales tax should also be subtracted
  * TODO: add userCard field to OrderHeader to enable Unique Cards + Repeat Rate
- * TODO: add order status field if filtering by completed-only is needed
  */
 export async function GET(request: NextRequest) {
     try {
@@ -29,28 +56,39 @@ export async function GET(request: NextRequest) {
         const windowParam =
             request.nextUrl.searchParams.get("window") ?? "thisMonth";
 
-        // Compute UTC date bounds
+        // Compute LA-local date bounds (consistent with dashboard/page.tsx)
         const now = new Date();
-        const y = now.getUTCFullYear();
-        const m = now.getUTCMonth();
+        const laDateStr = new Intl.DateTimeFormat("en-CA", {
+            timeZone: LA_TZ,
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+        }).format(now);
+        const [yStr, mStr, dStr] = laDateStr.split("-");
+        const y = parseInt(yStr, 10);
+        const m = parseInt(mStr, 10) - 1; // 0-indexed
+        const d = parseInt(dStr, 10);
+
         let start: Date;
         let end: Date;
 
         switch (windowParam) {
             case "today": {
-                start = new Date(Date.UTC(y, m, now.getUTCDate()));
-                end = new Date(Date.UTC(y, m, now.getUTCDate() + 1));
+                start = laToUtc(y, m, d);
+                end = laToUtc(y, m, d + 1);
                 break;
             }
             case "previousMonth": {
-                start = new Date(Date.UTC(y, m - 1, 1));
-                end = new Date(Date.UTC(y, m, 1));
+                const prevM = m - 1;
+                start = laToUtc(prevM < 0 ? y - 1 : y, prevM < 0 ? 11 : prevM, 1);
+                end = laToUtc(y, m, 1);
                 break;
             }
             default: {
                 // thisMonth
-                start = new Date(Date.UTC(y, m, 1));
-                end = new Date(Date.UTC(y, m + 1, 1));
+                const nextM = m + 1;
+                start = laToUtc(y, m, 1);
+                end = laToUtc(nextM > 11 ? y + 1 : y, nextM > 11 ? 0 : nextM, 1);
                 break;
             }
         }
@@ -79,8 +117,10 @@ export async function GET(request: NextRequest) {
        JOIN "Machine" m ON oh."machineId" = m."id"
        LEFT JOIN "Location" l ON m."locationId" = l."id"
        WHERE oh."tenantId" = $1
-         AND oh."createdAt" >= $2
-         AND oh."createdAt" < $3
+         AND oh."payTime" IS NOT NULL
+         AND oh."payTime" >= $2
+         AND oh."payTime" < $3
+         AND oh."status" = 101
        GROUP BY oh."machineId", m."stickerNum", m."vendorMachineId", m."locationId", l."name"
        ORDER BY "grossRevenue" DESC`,
             tenantId,
