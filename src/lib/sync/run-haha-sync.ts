@@ -22,10 +22,10 @@ export interface SyncResult {
 }
 
 /**
- * Format a Date as YYYY-MM-DD string (UTC).
+ * Format a Date as YYYY-MM-DD HH:mm:ss string (UTC).
  */
 function fmtDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return d.toISOString().replace("T", " ").slice(0, 19);
 }
 
 /**
@@ -94,6 +94,10 @@ export async function runHahaSync(
 
     // Map of order_no → list-level row (retains status, which is NOT in detail response)
     const orderMap = new Map<string, HahaOrderSummary>();
+    // 2. Date window: last N days → today, formatted YYYY-MM-DD HH:mm:ss
+    const now = new Date();
+    const start = new Date(now);
+    start.setUTCDate(start.getUTCDate() - lookbackDays);
 
     if (bounded) {
       // ── Bounded mode: single pay-time window ──
@@ -215,6 +219,17 @@ export async function runHahaSync(
         `[haha-sync] Status breakdown: ${paidCount} paid (101), ${pendingCount} pending (200), ${details.length - paidCount - pendingCount} other`,
       );
     }
+    for (const summary of orderSummaries) {
+      try {
+        const detail = await getOrderDetail(token, summary.order_no);
+        details.push(detail);
+      } catch (err) {
+        console.error(`[haha-sync] Error fetching detail for order ${summary.order_no}:`, err);
+        // Continue processing other orders even if one fails
+      }
+    }
+
+    console.log(`[haha-sync] Fetched ${details.length} order details out of ${orderSummaries.length}`);
 
     // 5. Normalize
     const normalized = details.map(normalizeHahaOrder);

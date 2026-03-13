@@ -99,6 +99,7 @@ export async function getToken(): Promise<string> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ appkey: appKey, appsecret: appSecret }),
+    cache: "no-store",
   });
 
   if (!res.ok) {
@@ -182,6 +183,7 @@ async function signedGet<T>(
       Authorization: token,
     },
     signal: AbortSignal.timeout(30_000),
+    cache: "no-store",
   });
 
   if (!res.ok) {
@@ -285,8 +287,15 @@ export async function listOrders(
     allOrders.push(...data.list);
 
     // Use pageCount for total pages (primary), fallback to count-based calc
-    const totalPages = data.pageCount ?? Math.ceil((data.count ?? data.total ?? 0) / limit);
-    if (page >= totalPages || data.list.length < limit) break;
+    let totalPages = data.pageCount;
+    if (totalPages === undefined || totalPages === null) {
+      const count = data.count ?? data.total;
+      if (count !== undefined && count !== null) {
+        totalPages = Math.ceil(count / limit);
+      }
+    }
+
+    if ((totalPages !== undefined && page >= totalPages) || data.list.length < limit) break;
     page++;
   }
 
