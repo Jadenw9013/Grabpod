@@ -101,14 +101,13 @@ export default async function RankingsPage() {
     <main className="p-6">
       <h1 className="text-xl font-semibold">Product Rankings</h1>
 
-      {/* ── Filter row (§7.1) — UI-only, TODO: wire to backend ── */}
-      <div className="mt-4 flex flex-wrap gap-3">
-        <FilterSelect label="Date Range" options={["All Time", "This Month", "Last 30 Days"]} />
+      {/* ── Filter row (§7.1) — UI-only (Stubbed pending complex analytics schema) ── */}
+      <div className="mt-4 flex flex-wrap gap-3 opacity-50 cursor-not-allowed" title="Advanced analytics filters coming soon">
+        <FilterSelect label="Date Range" options={["This Month"]} />
         <FilterSelect label="Location" options={["All Locations"]} />
         <FilterSelect label="Machine" options={["All Machines"]} />
         <FilterSelect label="Cluster Area" options={["All Clusters"]} />
         <FilterSelect label="Category" options={["All Categories"]} />
-        {/* TODO: Wire filters to backend queries */}
       </div>
 
       {/* ── Top 10 Products (§7.2) ── */}

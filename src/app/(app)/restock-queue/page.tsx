@@ -158,10 +158,10 @@ export default function RestockQueuePage() {
 
       {/* Filter row */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {/* Stocker filter — TODO: wire when stocker assignment is implemented */}
+        {/* Stocker filter — disabled until user roles schema allows it */}
         <select
           disabled
-          className="rounded border bg-background px-3 py-1.5 text-sm opacity-50"
+          className="rounded border bg-background px-3 py-1.5 text-sm opacity-50 cursor-not-allowed"
           title="Stocker assignment not yet implemented"
         >
           <option>All Stockers</option>
@@ -193,10 +193,10 @@ export default function RestockQueuePage() {
 
         <div className="flex-1" />
 
-        {/* TODO: wire View Map to map view when implemented */}
+        {/* Map view disabled until geolocation schema is implemented */}
         <button
           disabled
-          className="rounded border px-3 py-1.5 text-sm opacity-50"
+          className="rounded border px-3 py-1.5 text-sm opacity-50 cursor-not-allowed"
           title="Map view not yet implemented"
         >
           View Map
@@ -328,8 +328,8 @@ export default function RestockQueuePage() {
 
                     {/* Actions */}
                     <div>
-                      {/* TODO: link to /restock/sessions/[id] detail page when implemented */}
-                      <button className="rounded border px-2 py-0.5 text-xs hover:bg-muted">
+                      {/* Details view stubbed for MVP */}
+                      <button disabled className="rounded border px-2 py-0.5 text-xs opacity-50 cursor-not-allowed hover:bg-muted" title="Session details view not yet implemented">
                         Details
                       </button>
                     </div>

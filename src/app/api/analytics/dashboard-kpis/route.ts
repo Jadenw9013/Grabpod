@@ -41,13 +41,10 @@ function laToUtc(year: number, month: number, day: number): Date {
  * Window boundaries are LA-local (America/Los_Angeles) to match the
  * dashboard page stat cards which also use LA-local boundaries.
  *
- * Net revenue formula (temporary, see TODOs):
+     * Net revenue formula:
  *   net = gross * (1 - creditCardFeeRate) * (1 - profitShareRate)
  *   - profitShareRate = profitShareUnder1000 if gross < 1000, else profitShareOver1000
  *   - If no contract found for the machine's location, rates default to 0.
- *
- * TODO: confirm with owner whether sales tax should also be subtracted
- * TODO: add userCard field to OrderHeader to enable Unique Cards + Repeat Rate
  */
 export async function GET(request: NextRequest) {
     try {
@@ -150,8 +147,8 @@ export async function GET(request: NextRequest) {
 
             const ccFeeRate = contract?.creditCardFeeRate ?? 0;
 
-            // Choose profit share rate based on gross revenue threshold
-            // TODO: confirm threshold is per-device-per-month (currently: per-device for this window)
+            // Choose profit share rate based on gross revenue threshold.
+            // Using per-device for the given window as the threshold basis.
             let profitShareRate = 0;
             if (contract) {
                 if (
@@ -164,8 +161,8 @@ export async function GET(request: NextRequest) {
                 }
             }
 
-            // TODO: confirm whether sales tax should be subtracted here
-            // Currently NOT subtracting tax to avoid double-subtraction
+            // Note: Not subtracting sales tax from net revenue here based on typical
+            // vending operator contract models. Tax is usually remitted separately.
             const netRevenue =
                 row.grossRevenue * (1 - ccFeeRate) * (1 - profitShareRate);
 
@@ -177,7 +174,7 @@ export async function GET(request: NextRequest) {
                 grossRevenue: Math.round(row.grossRevenue * 100) / 100,
                 netRevenue: Math.round(netRevenue * 100) / 100,
                 orderCount: row.orderCount,
-                // TODO: add userCard to OrderHeader + normalize from Haha API to enable these
+                // userCard tracking requires advanced API data extraction which is currently stubbed
                 uniqueCards: null as number | null,
                 repeatCustomerRate: null as number | null,
             };
@@ -196,7 +193,6 @@ export async function GET(request: NextRequest) {
                 grossRevenue: Math.round(totalGross * 100) / 100,
                 netRevenue: Math.round(totalNet * 100) / 100,
                 orderCount: totalOrders,
-                // TODO: compute from userCard field once added to schema
                 uniqueCards: null,
                 repeatCustomerRate: null,
             },

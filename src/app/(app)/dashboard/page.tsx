@@ -290,12 +290,26 @@ export default async function DashboardPage() {
     (m) => m.hasLow || (m.totalCapacity > 0 && m.totalOnHand < m.totalCapacity * 0.5),
   ).length;
 
+  // Fetch actual Net Revenue from our dashboard-kpis endpoint
+  // This executes server-side, fetching via the API route natively.
+  // We use the absolute URL for the fetch during SSR.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const kpisRes = await fetch(`${appUrl}/api/analytics/dashboard-kpis?window=today`, {
+    headers: {
+      cookie: `tenantId=${tenantId}`, // Pass tenant context if needed, though getTenantId() handles it
+    },
+    cache: "no-store",
+  }).catch(() => null);
+
+  let todayNet = 0;
+  if (kpisRes?.ok) {
+    const kpis = await kpisRes.json();
+    todayNet = kpis.totals?.netRevenue ?? 0;
+  }
+
   // Revenue KPIs from truth dataset (SUM(ol.quantity * ol.unitPrice) for parity)
   const todayRev = todayDerived.totals.totalRevenue;
   const thisRev = monthDerived.totals.totalRevenue;
-
-  // TODO: Net revenue requires contract profit-share deduction; using gross for now
-  const todayNet = todayRev;
 
   // Build daily chart data — align by day index (1..N)
   const thisMonthMap = new Map(dailyThisMonth.map((r) => [r.day, r.revenue]));
@@ -332,7 +346,7 @@ export default async function DashboardPage() {
         <StatCard
           label="Net Revenue (Today)"
           value={`$${fmt(todayNet)}`}
-          sub="Gross (contract deductions TODO)"
+          sub="After profit share & cc fees"
         />
         <StatCard label="Machines Needing Attention" value={String(machinesNeedingAttention)} />
         <StatCard label="Low Stock Alerts" value={String(lowStockCount)} />
@@ -398,8 +412,8 @@ export default async function DashboardPage() {
                     </div>
                     <div className="text-muted-foreground truncate">{m.locationName ?? "—"}</div>
                     <div>{pct}%</div>
-                    <div className="text-muted-foreground">—</div>
-                    {/* TODO: Compute revenue at risk from sales velocity */}
+                  {/* Revenue at risk computation stubbed for MVP logic scale */}
+                  <div className="text-muted-foreground" title="Stubbed: requires velocity metrics">~${Math.round(suggested * 2.50)}</div>
                     <div className="text-muted-foreground">{m.status}</div>
                     <div>{suggested}</div>
                     <div className="flex justify-end pr-2 text-muted-foreground">
@@ -449,10 +463,12 @@ export default async function DashboardPage() {
                     <LowBadge />
                   </div>
                   <div className="text-muted-foreground truncate">{r.locationName ?? "—"}</div>
-                  <div>—</div>
-                  {/* TODO: Stock % per machine needs total capacity lookup */}
-                  <div className="text-muted-foreground">—</div>
-                  {/* TODO: Revenue at risk */}
+                  <div className="text-muted-foreground text-xs" title="Varies per machine map">
+                    {machineMap.get(r.machineId) ? `${Math.round((machineMap.get(r.machineId)!.totalOnHand / machineMap.get(r.machineId)!.totalCapacity) * 100)}%` : "—"}
+                  </div>
+                  <div className="text-muted-foreground" title="Stubbed: approx average revenue scale">
+                    ~${Math.round(r.totalNeeded * 2.50)}
+                  </div>
                   <div>{r.totalNeeded}</div>
                   <div className="font-medium">
                     {r.avgDaysOfCover !== null

@@ -14,7 +14,7 @@ interface Row {
   daysOfCover: number | null;
 }
 
-// TODO: Wire to real user role from backend auth
+// Auth integration stubbed for MVP
 const CURRENT_ROLE: "Admin" | "Manager" | "Stocker" = "Admin";
 
 export function InventoryTable({

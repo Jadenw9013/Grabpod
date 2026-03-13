@@ -111,23 +111,19 @@ function ContractRow({
             </div>
 
             {/* Inline detail: financial rates */}
-            <div className="px-3 pb-3 flex gap-6 text-xs text-muted-foreground">
+            <div className="px-3 pb-3 flex gap-6 text-xs text-muted-foreground" title="Editing disabled in MVP version">
                 <span>
                     Sales Tax Rate:{" "}
                     <span className="text-foreground">
                         {(taxRate * 100).toFixed(2)}%
                     </span>
-                    {/* TODO: Make editable for Admin/Manager */}
                 </span>
                 <span>
                     CC Fee Rate:{" "}
                     <span className="text-foreground">
                         {(ccFeeRate * 100).toFixed(2)}%
                     </span>
-                    {/* TODO: Make editable for Admin/Manager */}
                 </span>
-                {/* TODO: Editable Effective From Date */}
-                {/* TODO: Revenue breakdown + net revenue preview in detail view */}
             </div>
         </div>
     );
