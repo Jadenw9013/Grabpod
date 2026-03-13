@@ -1,5 +1,6 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -19,8 +20,14 @@ function createPrismaClient(): PrismaClient {
     throw new Error("DATABASE_URL is missing in .env");
   }
 
+  const pool = new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+  });
+
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    adapter: new PrismaPg(pool as any),
   });
 }
 

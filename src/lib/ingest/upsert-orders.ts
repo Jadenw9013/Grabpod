@@ -10,6 +10,10 @@ export interface NormalizedOrder {
   machineIdentifier: string;
   grossAmount?: number;
   actualPaymentAmount?: number;
+  /** Vendor order status: 101=paid, 200=pending, 0=unknown */
+  status?: number;
+  /** Payment timestamp (null if not yet paid) */
+  payTime?: Date | null;
   lineItems: {
     sku?: string;
     name: string;
@@ -134,6 +138,10 @@ export async function upsertOrders(
         update: {
           grossAmount: order.grossAmount ?? undefined,
           actualPaymentAmount: order.actualPaymentAmount ?? undefined,
+          // Only update status/payTime with non-degrading values:
+          // status=0 (unknown) must not overwrite a stored 101; null must not clear a valid payTime.
+          ...(order.status ? { status: order.status } : {}),
+          ...(order.payTime ? { payTime: order.payTime } : {}),
         },
         create: {
           orderNo: order.orderNo,
@@ -141,6 +149,8 @@ export async function upsertOrders(
           machineId,
           grossAmount: order.grossAmount ?? 0,
           actualPaymentAmount: order.actualPaymentAmount ?? 0,
+          status: order.status ?? 0,
+          payTime: order.payTime ?? null,
           createdAt: order.createdAt,
         },
       });
