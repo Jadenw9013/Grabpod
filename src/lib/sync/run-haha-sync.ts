@@ -17,10 +17,10 @@ export interface SyncResult {
 }
 
 /**
- * Format a Date as YYYY-MM-DD string (UTC).
+ * Format a Date as YYYY-MM-DD HH:mm:ss string (UTC).
  */
 function fmtDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return d.toISOString().replace("T", " ").slice(0, 19);
 }
 
 /**
@@ -48,7 +48,7 @@ export async function runHahaSync(
     // 1. Token
     const token = await getToken();
 
-    // 2. Date window: last N days → today, formatted YYYY-MM-DD
+    // 2. Date window: last N days → today, formatted YYYY-MM-DD HH:mm:ss
     const now = new Date();
     const start = new Date(now);
     start.setUTCDate(start.getUTCDate() - lookbackDays);
@@ -70,11 +70,16 @@ export async function runHahaSync(
     // Process sequentially to avoid rate-limiting
     const details = [];
     for (const summary of orderSummaries) {
-      const detail = await getOrderDetail(token, summary.order_no);
-      details.push(detail);
+      try {
+        const detail = await getOrderDetail(token, summary.order_no);
+        details.push(detail);
+      } catch (err) {
+        console.error(`[haha-sync] Error fetching detail for order ${summary.order_no}:`, err);
+        // Continue processing other orders even if one fails
+      }
     }
 
-    console.log(`[haha-sync] Fetched ${details.length} order details`);
+    console.log(`[haha-sync] Fetched ${details.length} order details out of ${orderSummaries.length}`);
 
     // 5. Normalize
     const normalized = details.map(normalizeHahaOrder);

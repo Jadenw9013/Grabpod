@@ -51,7 +51,7 @@ export function RevenueTrendLineChart({
                     width={60}
                 />
                 <Tooltip
-                    formatter={(value: number | undefined) => currencyFormatter(value ?? 0)}
+                    formatter={(value: string | number | readonly (string | number)[] | undefined) => currencyFormatter(Number(value) || 0)}
                     contentStyle={{
                         backgroundColor: "#fff",
                         border: "1px solid #e5e5e5",
