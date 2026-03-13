@@ -190,7 +190,7 @@ export default async function DashboardPage() {
     // Daily revenue — THIS month (using SUM(ol.quantity * ol.unitPrice) for truth parity)
     prisma.$queryRawUnsafe<{ day: number; revenue: number }[]>(
       `SELECT
-         EXTRACT(DAY FROM oh."payTime" AT TIME ZONE 'America/Los_Angeles')::int AS "day",
+         EXTRACT(DAY FROM oh."payTime" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles')::int AS "day",
          COALESCE(SUM(ol."quantity" * ol."unitPrice"), 0)::float AS "revenue"
        FROM "OrderLine" ol
        JOIN "OrderHeader" oh ON ol."orderNo" = oh."orderNo"
@@ -206,7 +206,7 @@ export default async function DashboardPage() {
     // Daily revenue — PREVIOUS month
     prisma.$queryRawUnsafe<{ day: number; revenue: number }[]>(
       `SELECT
-         EXTRACT(DAY FROM oh."payTime" AT TIME ZONE 'America/Los_Angeles')::int AS "day",
+         EXTRACT(DAY FROM oh."payTime" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Los_Angeles')::int AS "day",
          COALESCE(SUM(ol."quantity" * ol."unitPrice"), 0)::float AS "revenue"
        FROM "OrderLine" ol
        JOIN "OrderHeader" oh ON ol."orderNo" = oh."orderNo"

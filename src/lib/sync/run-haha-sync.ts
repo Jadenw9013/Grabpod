@@ -22,10 +22,24 @@ export interface SyncResult {
 }
 
 /**
- * Format a Date as YYYY-MM-DD HH:mm:ss string (UTC).
+ * Format a Date as YYYY-MM-DD HH:mm:ss string (Beijing Time / UTC+8).
+ * The HAHA API expects dates in Beijing Time, not UTC.
  */
 function fmtDate(d: Date): string {
-  return d.toISOString().replace("T", " ").slice(0, 19);
+  // Convert UTC date to Beijing Time (UTC+8) string
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+
+  // Format to "2026-03-07, 15:53:43" and replace the comma with space
+  return formatter.format(d).replace(", ", " ");
 }
 
 /**
@@ -219,17 +233,6 @@ export async function runHahaSync(
         `[haha-sync] Status breakdown: ${paidCount} paid (101), ${pendingCount} pending (200), ${details.length - paidCount - pendingCount} other`,
       );
     }
-    for (const summary of orderSummaries) {
-      try {
-        const detail = await getOrderDetail(token, summary.order_no);
-        details.push(detail);
-      } catch (err) {
-        console.error(`[haha-sync] Error fetching detail for order ${summary.order_no}:`, err);
-        // Continue processing other orders even if one fails
-      }
-    }
-
-    console.log(`[haha-sync] Fetched ${details.length} order details out of ${orderSummaries.length}`);
 
     // 5. Normalize
     const normalized = details.map(normalizeHahaOrder);
