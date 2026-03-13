@@ -87,11 +87,13 @@ model Product {
 }
 
 model OrderHeader {
-  orderNo             String   @id
+  orderNo             String    @id
   tenantId            String
   machineId           String
-  grossAmount         Float    @default(0)
-  actualPaymentAmount Float    @default(0)
+  grossAmount         Float     @default(0)
+  actualPaymentAmount Float     @default(0)
+  status              Int       @default(0)   // 101=paid, 200=pending, 0=unknown
+  payTime             DateTime?
   createdAt           DateTime
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id])

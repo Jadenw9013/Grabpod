@@ -45,7 +45,10 @@ export function DeviceKpisTable() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/analytics/dashboard-kpis?window=${w}`);
+            // cache: 'no-store' ensures the browser never serves a stale cached response.
+            const res = await fetch(`/api/analytics/dashboard-kpis?window=${w}`, {
+                cache: "no-store",
+            });
             if (!res.ok) {
                 const body = await res.json().catch(() => null);
                 throw new Error(body?.error ?? `Error ${res.status}`);
@@ -60,6 +63,10 @@ export function DeviceKpisTable() {
 
     useEffect(() => {
         fetchData(windowParam);
+        // Auto-refresh every 2 minutes to pick up data written by the background sync poller.
+        // The poller runs on the same 2-minute cadence (see src/lib/sync/haha-poller.ts).
+        const interval = setInterval(() => fetchData(windowParam), 2 * 60 * 1000);
+        return () => clearInterval(interval);
     }, [windowParam, fetchData]);
 
     const fmt = (n: number) =>
