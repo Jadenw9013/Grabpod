@@ -94,6 +94,10 @@ export async function runHahaSync(
 
     // Map of order_no → list-level row (retains status, which is NOT in detail response)
     const orderMap = new Map<string, HahaOrderSummary>();
+    // 2. Date window: last N days → today, formatted YYYY-MM-DD HH:mm:ss
+    const now = new Date();
+    const start = new Date(now);
+    start.setUTCDate(start.getUTCDate() - lookbackDays);
 
     if (bounded) {
       // ── Bounded mode: single pay-time window ──
@@ -187,7 +191,7 @@ export async function runHahaSync(
     }
 
     console.log(
-      `[haha-sync] Fetched ${details.length} order details out of ${uniqueOrderNos.length} (${detailErrors} errors)`,
+      `[haha-sync] Fetched ${details.length} order details (${detailErrors} errors)`,
     );
 
     // Log timestamp ranges for auditability
@@ -215,7 +219,6 @@ export async function runHahaSync(
         `[haha-sync] Status breakdown: ${paidCount} paid (101), ${pendingCount} pending (200), ${details.length - paidCount - pendingCount} other`,
       );
     }
-
     // 5. Normalize
     const normalized = details.map(normalizeHahaOrder);
 
