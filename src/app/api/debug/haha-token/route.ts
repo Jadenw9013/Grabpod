@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
  * Server-only smoke test for Haha Open Platform token endpoint.
  * Returns redacted diagnostics — never exposes appsecret or full token.
  *
- * In production, requires ?debug_token=<DEBUG_TOKEN env var>.
+ * In production, requires `x-debug-token` header matching <DEBUG_TOKEN env var>.
  */
 export async function GET(req: Request) {
     // ── Production guard ──
@@ -20,8 +20,7 @@ export async function GET(req: Request) {
                 { status: 500 },
             );
         }
-        const url = new URL(req.url);
-        if (url.searchParams.get("debug_token") !== debugToken) {
+        if (req.headers.get("x-debug-token") !== debugToken) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
     }

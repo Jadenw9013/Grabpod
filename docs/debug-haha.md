@@ -32,10 +32,10 @@ The script prints redacted diagnostics (never the full secret) and exits non-zer
 GET /api/debug/haha-token
 ```
 
-**Production guard**: requires `?debug_token=<DEBUG_TOKEN>` query param that matches the `DEBUG_TOKEN` env var on the server.
+**Production guard**: requires `x-debug-token` header that matches the `DEBUG_TOKEN` env var on the server.
 
 ```bash
-curl "https://your-app.vercel.app/api/debug/haha-token?debug_token=YOUR_DEBUG_TOKEN"
+curl -H "x-debug-token: YOUR_DEBUG_TOKEN" "https://your-app.vercel.app/api/debug/haha-token"
 ```
 
 In development (`NODE_ENV !== "production"`), no token is required:
