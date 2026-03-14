@@ -7,6 +7,13 @@ export const dynamic = "force-dynamic";
 
 const LA_TZ = "America/Los_Angeles";
 
+/**
+ * The gross revenue threshold ($1000) that determines which profit share rate to apply.
+ * TODO: Confirm whether this threshold should be calculated per-device-per-month
+ * or per-device for the current dashboard window.
+ */
+const PROFIT_SHARE_THRESHOLD = 1000;
+
 /** Midnight on a LA-local date expressed as a UTC instant. */
 function laToUtc(year: number, month: number, day: number): Date {
     const probe = new Date(Date.UTC(year, month, day, 12));
@@ -151,18 +158,9 @@ export async function GET(request: NextRequest) {
             const ccFeeRate = contract?.creditCardFeeRate ?? 0;
 
             // Choose profit share rate based on gross revenue threshold
-            // TODO: confirm threshold is per-device-per-month (currently: per-device for this window)
-            let profitShareRate = 0;
-            if (contract) {
-                if (
-                    row.grossRevenue >= 1000 &&
-                    contract.profitShareOver1000 !== null
-                ) {
-                    profitShareRate = contract.profitShareOver1000;
-                } else if (contract.profitShareUnder1000 !== null) {
-                    profitShareRate = contract.profitShareUnder1000;
-                }
-            }
+            // NOTE: Currently calculating threshold against the selected dashboard window.
+            // TODO: confirm with business if threshold should ALWAYS be per-month regardless of window.
+            const profitShareRate = getProfitShareRate(row.grossRevenue, contract);
 
             // TODO: confirm whether sales tax should be subtracted here
             // Currently NOT subtracting tax to avoid double-subtraction
@@ -204,4 +202,24 @@ export async function GET(request: NextRequest) {
     } catch (err) {
         return handleApiError(err);
     }
+}
+
+/**
+ * Determines the applicable profit share rate based on gross revenue and contract terms.
+ * If no contract is provided, the rate defaults to 0.
+ */
+function getProfitShareRate(
+    grossRevenue: number,
+    contract?: { profitShareUnder1000: number | null; profitShareOver1000: number | null },
+): number {
+    if (!contract) return 0;
+
+    if (
+        grossRevenue >= PROFIT_SHARE_THRESHOLD &&
+        contract.profitShareOver1000 !== null
+    ) {
+        return contract.profitShareOver1000;
+    }
+
+    return contract.profitShareUnder1000 ?? 0;
 }
