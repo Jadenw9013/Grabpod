@@ -3,6 +3,8 @@ import { getTenantId } from "@/lib/tenant";
 
 export const dynamic = "force-dynamic";
 
+const WAREHOUSE_LOW_THRESHOLD = 10;
+
 export default async function InventoryPage() {
     const tenantId = getTenantId();
 
@@ -18,8 +20,7 @@ export default async function InventoryPage() {
 
     const totalUnits = rows.reduce((sum, r) => sum + r.onHand, 0);
     const totalSkus = rows.length;
-    // TODO: Define "low" threshold for warehouse items
-    const lowItems = rows.filter((r) => r.onHand <= 0).length;
+    const lowItems = rows.filter((r) => r.onHand <= WAREHOUSE_LOW_THRESHOLD).length;
 
     return (
         <main className="p-6">
@@ -62,7 +63,17 @@ export default async function InventoryPage() {
                                 <div className="text-muted-foreground truncate">
                                     {r.product.category ?? "—"}
                                 </div>
-                                <div>{r.onHand}</div>
+                                <div className="flex items-center">
+                                    {r.onHand}
+                                    {r.onHand <= WAREHOUSE_LOW_THRESHOLD && (
+                                        <span
+                                            className="inline-block rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 ml-2"
+                                            title={`Below threshold (${WAREHOUSE_LOW_THRESHOLD})`}
+                                        >
+                                            LOW
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="text-muted-foreground text-xs">
                                     {r.updatedAt.toLocaleDateString()}
                                 </div>
