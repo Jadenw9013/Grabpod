@@ -21,6 +21,7 @@ import {
   RotateCcw,
   ListChecks,
   User,
+  Database,
 } from "lucide-react";
 
 /* ─── Primary nav (exact order from wireframe §2) ─── */
@@ -35,6 +36,7 @@ const PRIMARY_NAV = [
   { href: "/restock-queue", label: "Restock Queue", icon: RefreshCw },
   { href: "/reports", label: "Reports", icon: ClipboardList },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/raw-data", label: "Raw Data", icon: Database },
 ] as const;
 
 /* ─── Admin tools: existing pages that aren't in the wireframe primary nav ─── */
